@@ -1,10 +1,11 @@
+import os
 import telebot
 import mysql.connector
 
 # ==========================================
 # ⚙️ CONFIGURACIÓN Y CONEXIÓN
 # ==========================================
-TOKEN = 'TU_TOKEN_AQUI'
+TOKEN = os.getenv("TOKEN")
 
 DB_CONFIG = {
     'host': os.getenv("MYSQLHOST"),
