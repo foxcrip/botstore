@@ -12,11 +12,11 @@ if not TOKEN:
     raise Exception("❌ TOKEN no encontrado en Railway")
 
 DB_CONFIG = {
-    'host': os.getenv("MYSQLHOST"),
-    'user': os.getenv("MYSQLUSER"),
-    'password': os.getenv("MYSQLPASSWORD"),
-    'database': os.getenv("MYSQLDATABASE"),
-    'port': int(os.getenv("MYSQLPORT", 3306))
+    'host': os.getenv("MYSQL_HOST"),
+    'user': os.getenv("MYSQL_USER"),
+    'password': os.getenv("MYSQL_PASSWORD"),
+    'database': os.getenv("MYSQL_DATABASE"),
+    'port': int(os.getenv("MYSQL_PORT", 3306))
 }
 
 bot = telebot.TeleBot(TOKEN)
