@@ -8,11 +8,11 @@ import mysql.connector
 TOKEN = os.getenv("TOKEN")
 
 DB_CONFIG = {
-    'host': os.getenv("MYSQL_HOST"),
-    'user': os.getenv("MYSQL_USER"),
-    'password': os.getenv("MYSQL_PASSWORD"),
-    'database': os.getenv("MYSQL_DATABASE"),
-    'port': int(os.getenv("MYSQL_PORT", 3306))
+    'host': os.getenv("MYSQLHOST", "zephyr.proxy.rlwy.net"),
+    'user': os.getenv("MYSQLUSER", "root"),
+    'password': os.getenv("MYSQLPASSWORD", "lBvUAkLnhDcAFNqXOCClUmcWrvIbRUbV"),
+    'database': os.getenv("MYSQLDATABASE", "railway"),
+    'port': int(os.getenv("MYSQLPORT", 43703))
 }
 
 bot = telebot.TeleBot(TOKEN)
