@@ -11,25 +11,14 @@ TOKEN = os.getenv("TOKEN")
 if not TOKEN:
     raise Exception("❌ TOKEN no encontrado en Railway")
 
-# Railway genera estas variables SIN guión bajo
-# ==========================================
-# ⚙️ CONFIGURACIÓN Y CONEXIÓN
-# ==========================================
-
-TOKEN = os.getenv("TOKEN")
-
-if not TOKEN:
-    raise Exception("❌ TOKEN no encontrado en Railway")
-
-# Intentamos obtener las variables, pero si fallan, no lanzamos error inmediato
-# para poder depurar qué está pasando realmente
 DB_CONFIG = {
     'host':     os.getenv("MYSQLHOST") or os.getenv("DB_HOST"),
     'user':     os.getenv("MYSQLUSER") or os.getenv("DB_USER"),
     'password': os.getenv("MYSQLPASSWORD") or os.getenv("DB_PASSWORD"),
     'database': os.getenv("MYSQLDATABASE") or os.getenv("DB_NAME") or "railway",
-    'port':     int(os.getenv("MYSQLPORT") or os.getenv("DB_PORT", 3306))
+    'port':     int(os.getenv("MYSQLPORT") or os.getenv("DB_PORT") or 3306)
 }
+
 # DEPURACIÓN: Imprimimos qué variables encontró el sistema
 print("--- VARIABLES DETECTADAS POR EL BOT ---")
 for key, value in DB_CONFIG.items():
@@ -38,11 +27,7 @@ for key, value in DB_CONFIG.items():
 print("---------------------------------------")
 
 # Validación final
-missing = [k for k, v in DB_CONFIG.items() if v is None]
-if missing:
-    raise Exception(f"❌ Variables de DB faltantes en Railway: {missing}")
-# Validar que todas las variables existan antes de arrancar
-missing = [k for k, v in DB_CONFIG.items() if v is None]
+missing = [k for k, v in DB_CONFIG.items() if not v]
 if missing:
     raise Exception(f"❌ Variables de DB faltantes en Railway: {missing}")
 
