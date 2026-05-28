@@ -1,7 +1,7 @@
 import os
 import telebot
 import mysql.connector
-import time
+
 # ==========================================
 # ⚙️ CONFIGURACIÓN Y CONEXIÓN
 # ==========================================
@@ -310,10 +310,14 @@ def procesar_keys(message):
 # 🚀 INICIAR BOT
 # ==========================================
 
-
 if __name__ == "__main__":
+    import time
     print("🚀 [BOT] Corriendo con Precios Dinámicos...")
-    bot.remove_webhook()
-    time.sleep(2)  # ← agrega esta línea
-    print("🔄 Iniciando polling...")
-    bot.infinity_polling(...)
+    print(f"🔗 Conectando a: {DB_CONFIG['host']}:{DB_CONFIG['port']} / {DB_CONFIG['database']}")
+    try:
+        bot.remove_webhook()
+        time.sleep(2)
+        print("🔄 Iniciando polling...")
+        bot.infinity_polling(skip_pending=True)
+    except Exception as e:
+        print(f"❌ ERROR EN POLLING: {e}")
