@@ -291,10 +291,5 @@ def procesar_keys(message):
 # ==========================================
 
 if __name__ == "__main__":
-
     print("🚀 [BOT] Corriendo con Precios Dinámicos...")
-
-    bot.infinity_polling(
-        timeout=90,
-        long_polling_timeout=90
-    )
+    bot.infinity_polling(skip_pending=True, timeout=60, long_polling_timeout=60)
