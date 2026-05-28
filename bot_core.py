@@ -24,13 +24,12 @@ if not TOKEN:
 # Intentamos obtener las variables, pero si fallan, no lanzamos error inmediato
 # para poder depurar qué está pasando realmente
 DB_CONFIG = {
-    'host':     os.getenv("MYSQLHOST"),
-    'user':     os.getenv("MYSQLUSER"),
-    'password': os.getenv("MYSQLPASSWORD"),
-    'database': os.getenv("MYSQLDATABASE"),
-    'port':     int(os.getenv("MYSQLPORT", 3306))
+    'host':     os.getenv("MYSQLHOST") or os.getenv("DB_HOST"),
+    'user':     os.getenv("MYSQLUSER") or os.getenv("DB_USER"),
+    'password': os.getenv("MYSQLPASSWORD") or os.getenv("DB_PASSWORD"),
+    'database': os.getenv("MYSQLDATABASE") or os.getenv("DB_NAME") or "railway",
+    'port':     int(os.getenv("MYSQLPORT") or os.getenv("DB_PORT", 3306))
 }
-
 # DEPURACIÓN: Imprimimos qué variables encontró el sistema
 print("--- VARIABLES DETECTADAS POR EL BOT ---")
 for key, value in DB_CONFIG.items():
