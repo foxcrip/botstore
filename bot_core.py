@@ -5,37 +5,54 @@ import mysql.connector
 # ==========================================
 # ⚙️ CONFIGURACIÓN Y CONEXIÓN
 # ==========================================
+
 TOKEN = os.getenv("TOKEN")
 
+if not TOKEN:
+    raise Exception("❌ TOKEN no encontrado en Railway")
+
 DB_CONFIG = {
-    'host': os.getenv("MYSQLHOST", "zephyr.proxy.rlwy.net"),
-    'user': os.getenv("MYSQLUSER", "root"),
-    'password': os.getenv("MYSQLPASSWORD", "lBvUAkLnhDcAFNqXOCClUmcWrvIbRUbV"),
-    'database': os.getenv("MYSQLDATABASE", "railway"),
-    'port': int(os.getenv("MYSQLPORT", 43703))
+    'host': os.getenv("MYSQLHOST"),
+    'user': os.getenv("MYSQLUSER"),
+    'password': os.getenv("MYSQLPASSWORD"),
+    'database': os.getenv("MYSQLDATABASE"),
+    'port': int(os.getenv("MYSQLPORT", 3306))
 }
 
 bot = telebot.TeleBot(TOKEN)
+
 CONTACTO_ADMIN = "@useragb"
 
+# ==========================================
+# 🔌 CONEXIÓN MYSQL
+# ==========================================
+
 def conectar_db():
+    print("✅ Intentando conectar a MySQL...")
     return mysql.connector.connect(**DB_CONFIG)
 
+# ==========================================
+# 💰 OBTENER PRECIO
+# ==========================================
+
 def obtener_precio_actual():
-    """Consulta el precio configurado en la base de datos en tiempo real."""
+
     try:
         conn = conectar_db()
         cursor = conn.cursor()
 
-        cursor.execute(
-            "SELECT valor FROM configuracion_sistema WHERE parametro = 'precio_cuenta'"
-        )
+        cursor.execute("""
+            SELECT valor
+            FROM configuracion_sistema
+            WHERE parametro = 'precio_cuenta'
+        """)
 
         res = cursor.fetchone()
 
         return int(res[0]) if res else 20
 
-    except:
+    except Exception as e:
+        print(f"❌ ERROR obtener_precio_actual: {e}")
         return 20
 
     finally:
@@ -44,7 +61,7 @@ def obtener_precio_actual():
             conn.close()
 
 # ==========================================
-# 🛒 COMANDOS DE USUARIO
+# 👋 START / HELP
 # ==========================================
 
 @bot.message_handler(commands=['start', 'help'])
@@ -56,10 +73,11 @@ def bienvenida(message):
         conn = conectar_db()
         cursor = conn.cursor()
 
-        cursor.execute(
-            "SELECT creditos FROM usuarios_autorizados WHERE user_id = %s",
-            (uid,)
-        )
+        cursor.execute("""
+            SELECT creditos
+            FROM usuarios_autorizados
+            WHERE user_id = %s
+        """, (uid,))
 
         user = cursor.fetchone()
 
@@ -68,8 +86,8 @@ def bienvenida(message):
             bot.reply_to(
                 message,
                 f"✅ <b>Sistema Activo.</b>\n\n"
-                f"💰 Tu Saldo: <b>${user[0]} MXN</b>\n"
-                f"👉 Toca /productos para comprar.",
+                f"💰 Tu saldo: <b>${user[0]} MXN</b>\n"
+                f"🛒 Usa /productos para ver stock.",
                 parse_mode="HTML"
             )
 
@@ -77,18 +95,22 @@ def bienvenida(message):
 
             bot.reply_to(
                 message,
-                "🔒 <b>Acceso Restringido.</b>\n"
-                "Envíame tu Key de acceso para registrarte:",
+                "🔒 <b>Acceso restringido.</b>\n\n"
+                "Envíame tu key de acceso para registrarte.",
                 parse_mode="HTML"
             )
 
-    except:
-        pass
+    except Exception as e:
+        print(f"❌ ERROR start: {e}")
 
     finally:
         if 'conn' in locals() and conn.is_connected():
             cursor.close()
             conn.close()
+
+# ==========================================
+# 🛒 PRODUCTOS
+# ==========================================
 
 @bot.message_handler(commands=['productos', 'stock'])
 def mostrar_productos(message):
@@ -100,38 +122,41 @@ def mostrar_productos(message):
         conn = conectar_db()
         cursor = conn.cursor(buffered=True)
 
-        cursor.execute(
-            "SELECT creditos FROM usuarios_autorizados WHERE user_id = %s",
-            (uid,)
-        )
+        cursor.execute("""
+            SELECT creditos
+            FROM usuarios_autorizados
+            WHERE user_id = %s
+        """, (uid,))
 
         user = cursor.fetchone()
 
         if not user:
             return
 
-        cursor.execute(
-            "SELECT servicio, COUNT(id) "
-            "FROM combos "
-            "WHERE estado = 'disponible' "
-            "GROUP BY servicio"
-        )
+        cursor.execute("""
+            SELECT servicio, COUNT(id)
+            FROM combos
+            WHERE estado = 'disponible'
+            GROUP BY servicio
+        """)
 
         resultados = cursor.fetchall()
 
         resp = (
-            f"💰 <b>Saldo: ${user[0]} MXN</b> | "
-            f"🏷️ <b>Costo: ${precio} c/u</b>\n\n"
+            f"💰 <b>Saldo:</b> ${user[0]} MXN\n"
+            f"🏷️ <b>Precio:</b> ${precio} MXN c/u\n\n"
         )
 
-        resp += "🛒 <b>PRODUCTOS DISPONIBLES:</b>\n━━━━━━━━━━━━━━━━━━━━\n"
+        resp += "🛒 <b>PRODUCTOS DISPONIBLES</b>\n"
+        resp += "━━━━━━━━━━━━━━━━━━\n"
 
         if resultados:
 
             for serv, cant in resultados:
+
                 resp += (
                     f"🔹 <b>{serv.capitalize()}</b> "
-                    f"({cant}) ➡️ /{serv}\n"
+                    f"({cant}) ➜ /{serv}\n"
                 )
 
         else:
@@ -139,13 +164,17 @@ def mostrar_productos(message):
 
         bot.reply_to(message, resp, parse_mode="HTML")
 
-    except:
-        pass
+    except Exception as e:
+        print(f"❌ ERROR productos: {e}")
 
     finally:
         if 'conn' in locals() and conn.is_connected():
             cursor.close()
             conn.close()
+
+# ==========================================
+# 📦 ENTREGA DE CUENTAS
+# ==========================================
 
 @bot.message_handler(func=lambda message: message.text.startswith('/'))
 def entregar_cuenta(message):
@@ -159,86 +188,98 @@ def entregar_cuenta(message):
     precio = obtener_precio_actual()
 
     try:
+
         conn = conectar_db()
         cursor = conn.cursor(buffered=True)
 
-        cursor.execute(
-            "SELECT creditos FROM usuarios_autorizados WHERE user_id = %s",
-            (uid,)
-        )
+        cursor.execute("""
+            SELECT creditos
+            FROM usuarios_autorizados
+            WHERE user_id = %s
+        """, (uid,))
 
         res_user = cursor.fetchone()
 
         if not res_user:
             return
 
-        if res_user[0] < precio:
+        saldo_actual = res_user[0]
+
+        if saldo_actual < precio:
 
             bot.reply_to(
                 message,
-                f"❌ <b>Saldo insuficiente.</b>\n"
-                f"Costo: ${precio}\n"
-                f"Tu saldo: ${res_user[0]}\n\n"
-                f"Contacto: {CONTACTO_ADMIN}",
+                f"❌ <b>Saldo insuficiente</b>\n\n"
+                f"💰 Saldo: ${saldo_actual}\n"
+                f"🏷️ Precio: ${precio}\n\n"
+                f"📩 Contacto: {CONTACTO_ADMIN}",
                 parse_mode="HTML"
             )
 
             return
 
-        cursor.execute(
-            "SELECT id, cuenta "
-            "FROM combos "
-            "WHERE servicio = %s "
-            "AND estado = 'disponible' "
-            "LIMIT 1 FOR UPDATE",
-            (servicio,)
-        )
+        cursor.execute("""
+            SELECT id, cuenta
+            FROM combos
+            WHERE servicio = %s
+            AND estado = 'disponible'
+            LIMIT 1
+        """, (servicio,))
 
         res_combo = cursor.fetchone()
 
-        if res_combo:
-
-            id_db, cuenta_txt = res_combo
-
-            cursor.execute(
-                "UPDATE usuarios_autorizados "
-                "SET creditos = creditos - %s "
-                "WHERE user_id = %s",
-                (precio, uid)
-            )
-
-            cursor.execute(
-                "UPDATE combos "
-                "SET estado = 'entregado' "
-                "WHERE id = %s",
-                (id_db,)
-            )
-
-            conn.commit()
+        if not res_combo:
 
             bot.reply_to(
                 message,
-                f"✅ <b>COMPRA EXITOSA</b>\n"
-                f"Costo: ${precio}\n"
-                f"Saldo: ${res_user[0] - precio}\n\n"
-                f"<code>{cuenta_txt}</code>",
-                parse_mode="HTML"
+                "⚠️ No hay stock disponible de ese servicio."
             )
 
-        else:
-            conn.commit()
-            bot.reply_to(message, "⚠️ Sin stock de ese servicio.")
+            return
 
-    except:
+        combo_id, cuenta_txt = res_combo
+
+        cursor.execute("""
+            UPDATE usuarios_autorizados
+            SET creditos = creditos - %s
+            WHERE user_id = %s
+        """, (precio, uid))
+
+        cursor.execute("""
+            UPDATE combos
+            SET estado = 'entregado'
+            WHERE id = %s
+        """, (combo_id,))
+
+        conn.commit()
+
+        nuevo_saldo = saldo_actual - precio
+
+        bot.reply_to(
+            message,
+            f"✅ <b>COMPRA EXITOSA</b>\n\n"
+            f"💸 Costo: ${precio}\n"
+            f"💰 Nuevo saldo: ${nuevo_saldo}\n\n"
+            f"<code>{cuenta_txt}</code>",
+            parse_mode="HTML"
+        )
+
+    except Exception as e:
+
+        print(f"❌ ERROR compra: {e}")
 
         if 'conn' in locals():
             conn.rollback()
 
     finally:
 
-        if 'conn' in locals():
+        if 'conn' in locals() and conn.is_connected():
             cursor.close()
             conn.close()
+
+# ==========================================
+# 🔑 REGISTRO POR KEY
+# ==========================================
 
 @bot.message_handler(func=lambda message: True)
 def procesar_keys(message):
@@ -247,42 +288,63 @@ def procesar_keys(message):
     texto = message.text.strip()
 
     try:
+
         conn = conectar_db()
         cursor = conn.cursor(buffered=True)
 
-        cursor.execute(
-            "SELECT clave FROM claves_acceso WHERE clave = %s",
-            (texto,)
-        )
+        cursor.execute("""
+            SELECT clave
+            FROM claves_acceso
+            WHERE clave = %s
+        """, (texto,))
 
-        if cursor.fetchone():
+        existe = cursor.fetchone()
 
-            cursor.execute(
-                "INSERT INTO usuarios_autorizados (user_id, creditos) "
-                "VALUES (%s, 0)",
-                (uid,)
-            )
+        if existe:
 
-            cursor.execute(
-                "DELETE FROM claves_acceso WHERE clave = %s",
-                (texto,)
-            )
+            cursor.execute("""
+                SELECT user_id
+                FROM usuarios_autorizados
+                WHERE user_id = %s
+            """, (uid,))
+
+            ya_registrado = cursor.fetchone()
+
+            if ya_registrado:
+
+                bot.reply_to(
+                    message,
+                    "⚠️ Ya estás registrado."
+                )
+
+                return
+
+            cursor.execute("""
+                INSERT INTO usuarios_autorizados (user_id, creditos)
+                VALUES (%s, 0)
+            """, (uid,))
+
+            cursor.execute("""
+                DELETE FROM claves_acceso
+                WHERE clave = %s
+            """, (texto,))
 
             conn.commit()
 
             bot.reply_to(
                 message,
-                f"🔓 <b>¡Acceso Concedido!</b>\n"
-                f"Saldo: $0 MXN.\n"
-                f"Contacta a {CONTACTO_ADMIN} para recargar.",
+                f"🔓 <b>Acceso concedido</b>\n\n"
+                f"💰 Saldo actual: $0 MXN\n"
+                f"📩 Contacta a {CONTACTO_ADMIN} para recargar.",
                 parse_mode="HTML"
             )
 
-    except:
-        pass
+    except Exception as e:
+        print(f"❌ ERROR keys: {e}")
 
     finally:
-        if 'conn' in locals():
+
+        if 'conn' in locals() and conn.is_connected():
             cursor.close()
             conn.close()
 
@@ -291,10 +353,22 @@ def procesar_keys(message):
 # ==========================================
 
 if __name__ == "__main__":
+
     print("🚀 [BOT] Corriendo con Precios Dinámicos...")
 
     try:
+
         print("🔄 Iniciando polling...")
-        bot.infinity_polling(skip_pending=True, timeout=60, long_polling_timeout=60)
+
+        bot.remove_webhook()
+
+        bot.infinity_polling(
+            skip_pending=True,
+            timeout=60,
+            long_polling_timeout=60,
+            allowed_updates=["message"]
+        )
+
     except Exception as e:
+
         print(f"❌ ERROR EN POLLING: {e}")
