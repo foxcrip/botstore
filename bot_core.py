@@ -11,13 +11,19 @@ TOKEN = os.getenv("TOKEN")
 if not TOKEN:
     raise Exception("❌ TOKEN no encontrado en Railway")
 
+# Railway genera estas variables SIN guión bajo
 DB_CONFIG = {
-    'host': os.getenv("MYSQL_HOST"),
-    'user': os.getenv("MYSQL_USER"),
-    'password': os.getenv("MYSQL_PASSWORD"),
-    'database': os.getenv("MYSQL_DATABASE"),
-    'port': int(os.getenv("MYSQL_PORT", 3306))
+    'host':     os.getenv("MYSQLHOST"),
+    'user':     os.getenv("MYSQLUSER"),
+    'password': os.getenv("MYSQLPASSWORD"),
+    'database': os.getenv("MYSQLDATABASE"),
+    'port':     int(os.getenv("MYSQLPORT", 3306))
 }
+
+# Validar que todas las variables existan antes de arrancar
+missing = [k for k, v in DB_CONFIG.items() if v is None]
+if missing:
+    raise Exception(f"❌ Variables de DB faltantes en Railway: {missing}")
 
 bot = telebot.TeleBot(TOKEN)
 
@@ -36,25 +42,19 @@ def conectar_db():
 # ==========================================
 
 def obtener_precio_actual():
-
     try:
         conn = conectar_db()
         cursor = conn.cursor()
-
         cursor.execute("""
             SELECT valor
             FROM configuracion_sistema
             WHERE parametro = 'precio_cuenta'
         """)
-
         res = cursor.fetchone()
-
         return int(res[0]) if res else 20
-
     except Exception as e:
         print(f"❌ ERROR obtener_precio_actual: {e}")
         return 20
-
     finally:
         if 'conn' in locals() and conn.is_connected():
             cursor.close()
@@ -66,23 +66,18 @@ def obtener_precio_actual():
 
 @bot.message_handler(commands=['start', 'help'])
 def bienvenida(message):
-
     uid = message.from_user.id
-
     try:
         conn = conectar_db()
         cursor = conn.cursor()
-
         cursor.execute("""
             SELECT creditos
             FROM usuarios_autorizados
             WHERE user_id = %s
         """, (uid,))
-
         user = cursor.fetchone()
 
         if user:
-
             bot.reply_to(
                 message,
                 f"✅ <b>Sistema Activo.</b>\n\n"
@@ -90,19 +85,15 @@ def bienvenida(message):
                 f"🛒 Usa /productos para ver stock.",
                 parse_mode="HTML"
             )
-
         else:
-
             bot.reply_to(
                 message,
                 "🔒 <b>Acceso restringido.</b>\n\n"
                 "Envíame tu key de acceso para registrarte.",
                 parse_mode="HTML"
             )
-
     except Exception as e:
         print(f"❌ ERROR start: {e}")
-
     finally:
         if 'conn' in locals() and conn.is_connected():
             cursor.close()
@@ -114,20 +105,16 @@ def bienvenida(message):
 
 @bot.message_handler(commands=['productos', 'stock'])
 def mostrar_productos(message):
-
     uid = message.from_user.id
     precio = obtener_precio_actual()
-
     try:
         conn = conectar_db()
         cursor = conn.cursor(buffered=True)
-
         cursor.execute("""
             SELECT creditos
             FROM usuarios_autorizados
             WHERE user_id = %s
         """, (uid,))
-
         user = cursor.fetchone()
 
         if not user:
@@ -139,26 +126,21 @@ def mostrar_productos(message):
             WHERE estado = 'disponible'
             GROUP BY servicio
         """)
-
         resultados = cursor.fetchall()
 
         resp = (
             f"💰 <b>Saldo:</b> ${user[0]} MXN\n"
             f"🏷️ <b>Precio:</b> ${precio} MXN c/u\n\n"
         )
-
         resp += "🛒 <b>PRODUCTOS DISPONIBLES</b>\n"
         resp += "━━━━━━━━━━━━━━━━━━\n"
 
         if resultados:
-
             for serv, cant in resultados:
-
                 resp += (
                     f"🔹 <b>{serv.capitalize()}</b> "
                     f"({cant}) ➜ /{serv}\n"
                 )
-
         else:
             resp += "⚠️ No hay stock actualmente."
 
@@ -166,7 +148,6 @@ def mostrar_productos(message):
 
     except Exception as e:
         print(f"❌ ERROR productos: {e}")
-
     finally:
         if 'conn' in locals() and conn.is_connected():
             cursor.close()
@@ -178,7 +159,6 @@ def mostrar_productos(message):
 
 @bot.message_handler(func=lambda message: message.text.startswith('/'))
 def entregar_cuenta(message):
-
     uid = message.from_user.id
     servicio = message.text[1:].strip().lower()
 
@@ -186,18 +166,14 @@ def entregar_cuenta(message):
         return
 
     precio = obtener_precio_actual()
-
     try:
-
         conn = conectar_db()
         cursor = conn.cursor(buffered=True)
-
         cursor.execute("""
             SELECT creditos
             FROM usuarios_autorizados
             WHERE user_id = %s
         """, (uid,))
-
         res_user = cursor.fetchone()
 
         if not res_user:
@@ -206,7 +182,6 @@ def entregar_cuenta(message):
         saldo_actual = res_user[0]
 
         if saldo_actual < precio:
-
             bot.reply_to(
                 message,
                 f"❌ <b>Saldo insuficiente</b>\n\n"
@@ -215,7 +190,6 @@ def entregar_cuenta(message):
                 f"📩 Contacto: {CONTACTO_ADMIN}",
                 parse_mode="HTML"
             )
-
             return
 
         cursor.execute("""
@@ -225,16 +199,13 @@ def entregar_cuenta(message):
             AND estado = 'disponible'
             LIMIT 1
         """, (servicio,))
-
         res_combo = cursor.fetchone()
 
         if not res_combo:
-
             bot.reply_to(
                 message,
                 "⚠️ No hay stock disponible de ese servicio."
             )
-
             return
 
         combo_id, cuenta_txt = res_combo
@@ -252,7 +223,6 @@ def entregar_cuenta(message):
         """, (combo_id,))
 
         conn.commit()
-
         nuevo_saldo = saldo_actual - precio
 
         bot.reply_to(
@@ -265,14 +235,10 @@ def entregar_cuenta(message):
         )
 
     except Exception as e:
-
         print(f"❌ ERROR compra: {e}")
-
         if 'conn' in locals():
             conn.rollback()
-
     finally:
-
         if 'conn' in locals() and conn.is_connected():
             cursor.close()
             conn.close()
@@ -283,40 +249,28 @@ def entregar_cuenta(message):
 
 @bot.message_handler(func=lambda message: True)
 def procesar_keys(message):
-
     uid = message.from_user.id
     texto = message.text.strip()
-
     try:
-
         conn = conectar_db()
         cursor = conn.cursor(buffered=True)
-
         cursor.execute("""
             SELECT clave
             FROM claves_acceso
             WHERE clave = %s
         """, (texto,))
-
         existe = cursor.fetchone()
 
         if existe:
-
             cursor.execute("""
                 SELECT user_id
                 FROM usuarios_autorizados
                 WHERE user_id = %s
             """, (uid,))
-
             ya_registrado = cursor.fetchone()
 
             if ya_registrado:
-
-                bot.reply_to(
-                    message,
-                    "⚠️ Ya estás registrado."
-                )
-
+                bot.reply_to(message, "⚠️ Ya estás registrado.")
                 return
 
             cursor.execute("""
@@ -341,9 +295,7 @@ def procesar_keys(message):
 
     except Exception as e:
         print(f"❌ ERROR keys: {e}")
-
     finally:
-
         if 'conn' in locals() and conn.is_connected():
             cursor.close()
             conn.close()
@@ -353,22 +305,16 @@ def procesar_keys(message):
 # ==========================================
 
 if __name__ == "__main__":
-
     print("🚀 [BOT] Corriendo con Precios Dinámicos...")
-
+    print(f"🔗 Conectando a: {DB_CONFIG['host']}:{DB_CONFIG['port']} / {DB_CONFIG['database']}")
     try:
-
         print("🔄 Iniciando polling...")
-
         bot.remove_webhook()
-
         bot.infinity_polling(
             skip_pending=True,
             timeout=60,
             long_polling_timeout=60,
             allowed_updates=["message"]
         )
-
     except Exception as e:
-
         print(f"❌ ERROR EN POLLING: {e}")
