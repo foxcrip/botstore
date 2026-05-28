@@ -1,3 +1,4 @@
-customtkinter
-mysql-connector-python
 pyTelegramBotAPI
+mysql-connector-python
+customtkinter
+python-dotenv
