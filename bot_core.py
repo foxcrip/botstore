@@ -7,10 +7,11 @@ import mysql.connector
 TOKEN = 'TU_TOKEN_AQUI'
 
 DB_CONFIG = {
-    'host': 'localhost',
-    'user': 'bot_user',
-    'password': 'aldo1324',
-    'database': 'bot_telegram'
+    'host': os.getenv("MYSQLHOST"),
+    'user': os.getenv("MYSQLUSER"),
+    'password': os.getenv("MYSQLPASSWORD"),
+    'database': os.getenv("MYSQLDATABASE"),
+    'port': int(os.getenv("MYSQLPORT"))
 }
 
 bot = telebot.TeleBot(TOKEN)
