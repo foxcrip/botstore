@@ -13,13 +13,12 @@ if not TOKEN:
 
 # Railway genera estas variables SIN guión bajo
 DB_CONFIG = {
-    'host':     os.getenv("MYSQLHOST"),
-    'user':     os.getenv("MYSQLUSER"),
+    'host':     os.getenv("MYSQLHOST", "mysql.railway.internal"),
+    'user':     os.getenv("MYSQLUSER", "root"),
     'password': os.getenv("MYSQLPASSWORD"),
-    'database': os.getenv("MYSQLDATABASE"),
+    'database': os.getenv("MYSQLDATABASE", "railway"), # Cambiado de 'bot_telegram' a 'railway'
     'port':     int(os.getenv("MYSQLPORT", 3306))
 }
-
 # Validar que todas las variables existan antes de arrancar
 missing = [k for k, v in DB_CONFIG.items() if v is None]
 if missing:
